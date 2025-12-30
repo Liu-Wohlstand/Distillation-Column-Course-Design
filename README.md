@@ -4,3 +4,5 @@
 按顺序执行中文命名程序即可，但是不建议使用本程序进行塔板负荷性能图绘制
 
 前两个英文程序必须与剩下的中文程序在同一文件夹中，否则2.1会无法执行
+## Acknowledgments
+- The development of this project was assisted by the **DeepSeek-V3** large language model (DeepSeek-AI, 2024) for code generation and brainstorming.

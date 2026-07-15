@@ -1,24 +1,27 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import UnivariateSpline
-from matplotlib.font_manager import FontProperties
-import matplotlib
+
 import math
 import json
+from matplotlib.font_manager import FontProperties
+import matplotlib
 from reflux_ratio_calculator import EnhancedRefluxCalculator
 times_new_roman = FontProperties(family='Times New Roman')
 matplotlib.rcParams['font.family'] = 'SimSun'
 matplotlib.rcParams['axes.unicode_minus'] = False
+matplotlib.use('TkAgg')
+
 
 # ===== 设计参数 ===============================================
 # 根据你的设计要求修改
-Annual_processing_capacity = 60000  # 年处理量 吨/年，需要换算
-work_time = 8000  # 工作时间 小时/年
-t_f = 45  # 进料温度 ℃
-wt_f = 0.25  # 进料组成_wt 苯的质量分数
+Annual_processing_capacity = 160000  # 年处理量 吨/年，需要换算
+work_time = 7000  # 工作时间 小时/年
+t_f =96 # 进料温度 ℃
+wt_f = 0.3  # 进料组成_wt 苯的质量分数
 t_ewflux = 60  # 回流温度 ℃ 如果回流为泡点回流，则输入字符串格式'泡点回流'
-D_wt = 0.91  # 塔顶组成
-F_wt = 0.025  # 塔釜组成≤
+D_wt = 0.98  # 塔顶组成
+F_wt = 0.03  # 塔釜组成≤
 size = 6  # 图幅
 R_multiplier = 1.5  # 回流比系数（可根据设计调整，通常为1.2~2倍）
 
@@ -257,6 +260,11 @@ else:
     q = 1.0  # 饱和液体进料
     print(f"进料温度 ≥ 泡点温度，q = {q}（泡点进料）")
 
+# ===== 强制修正：若进料温度与泡点温度相差极小，直接设为饱和液体进料 =====
+if abs(tF - tBP_F) < 0.1:
+    q = 1.0
+    print("进料温度等于泡点温度，已强制设置 q = 1.0（饱和液体进料）")
+
 from txy_calculator import get_property_temperature
 
 # 假设您已经定义了txy_dict
@@ -396,13 +404,17 @@ plt.plot([ls_XA[3], ls_XA[3]], [0, find_closest_index(x, y, ls_XA[3])], linestyl
 # q线方程
 def q_line(x_f):
     x = np.linspace(x_f - 0.05, x_f + 0.05 + 0.3, 1000)
-    if q != 1:
-        y = (q / (q - 1)) * x - x_f / (q - 1)
+    if abs(q - 1) < 1e-6:
+        # 正确绘制垂直线 x = x_f
+        plt.axvline(x=x_f, color='purple', label='q线')
+        print('q线: x = 常数线 (q=1)')
+        # 返回两个数组，用于后续可能的计算（但垂直线不需要 x, y 用于交点）
+        return np.array([x_f, x_f]), np.array([0, 1])
     else:
-        y = x * 0 + x_f  # q=1时为垂直线
-    plt.plot(x, y, color='purple', label='q线')
-    print(f'q线方程: y = {(q / (q - 1)):.3f}x + {(-x_f / (q - 1)):.3f}') if q != 1 else print('q线: x = 常数线')
-    return x, y
+        y = (q / (q - 1)) * x - x_f / (q - 1)
+        plt.plot(x, y, color='purple', label='q线')
+        print(f'q线方程: y = {(q / (q - 1)):.3f}x + {(-x_f / (q - 1)):.3f}')
+        return x, y
 
 
 x_q, y_q = q_line(ls_XA[4])
@@ -436,7 +448,9 @@ if q != 1:
     )
     print(f"q线与精馏段操作线交点: ({x_intersection:.4f}, {y_intersection:.4f})")
 else:
-    x_intersection, y_intersection = ls_XA[4], ls_XA[2] / (R + 1) + (R / (R + 1)) * ls_XA[4]
+    x_intersection = ls_XA[4]
+    y_intersection = ls_XA[2] / (R + 1) + (R / (R + 1)) * ls_XA[4]
+    print(f"q线与精馏段操作线交点: x = {x_intersection:.4f}, y = {y_intersection:.4f}")
 
 # 提馏段操作线
 plt.plot([ls_XA[3], x_intersection], [ls_XA[3], y_intersection],
